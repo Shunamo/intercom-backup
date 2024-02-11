@@ -214,6 +214,7 @@ const Talktalk = () => {
 export default Talktalk;
 
 
+
 const PageContainer = styled.div`
   align-items: center;
   background-color: #EFF0F4;
@@ -380,3 +381,105 @@ const SortButton = styled.button`
 const ButtonImage = styled.img`
   margin-right: 0.5rem;
 `;
+
+
+
+/*
+const Talktalk = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isLoggedIn } = useAuth();
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [tempSearchTerm, setTempSearchTerm] = useState("");
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/talks');
+        if (!response.ok) {
+          throw new Error('데이터를 불러오는데 실패했습니다.');
+        }
+        const data = await response.json();
+        setSearchResults(data); // 서버에서 받아온 데이터를 검색 결과 상태에 저장
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
+  useEffect(() => {
+    const filteredPosts = searchResults.filter(post =>
+      post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      post.content.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setSearchResults(filteredPosts);
+  }, [searchTerm]);
+
+  const handleGoPosting = () => {
+    navigate('/posting?from=talktalk');
+  };
+
+  const handleGoLogin = () => {
+    navigate('/login');
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    setSearchTerm(tempSearchTerm);
+  };
+
+  const WritingArea = () => {
+    if (isLoggedIn) {
+      return (
+        <WritingContainer onClick={handleGoPosting}>
+          <img src="./assets/TalkTalkUserProfile.png" alt="Profile Icon" style={{ marginRight: '1.5rem' }} />
+          <WritingBox>질문을 남겨 보세요.</WritingBox>
+        </WritingContainer>
+      );
+    } else {
+      return (
+        <WritingContainer onClick={handleGoLogin}>
+          <img src="./assets/Ellipse2.png" alt="Profile Icon" style={{ marginRight: '1.5rem' }} />
+          <WritingBox>로그인하고 글을 남겨보세요.</WritingBox>
+        </WritingContainer>
+      );
+    }
+  };
+
+  return (
+    <PageContainer>
+      <WritingArea />
+      <TalkContainer>
+        <SearchInputContainer onSubmit={handleSubmit}>
+          <img src="./assets/SearchGray.png" alt="Search Icon" style={{ margin: '1.19rem 1.75rem 1.21rem 1.75rem' }} />
+          <SearchInput
+            type="text"
+            placeholder="원하는 글을 검색해 보세요."
+            value={tempSearchTerm}
+            onChange={(e) => setTempSearchTerm(e.target.value)}
+          />
+        </SearchInputContainer>
+
+        <TalkListContainer>
+          {searchResults.length > 0 ? (
+            searchResults.map(item => (
+              <SearchResultItem key={item.id} onClick={() => navigate(`/post/${item.id}`)}>
+                <p className="title">{item.title}</p>
+                <p className="content">{item.content || "내용이 없습니다."}</p>
+                <p className="response">답변: {item.answers} | 댓글: {item.comments} | 조회수: {item.views} | 좋아요: {item.likes}</p>
+              </SearchResultItem>
+            ))
+          ) : (
+            <div className="none-search">검색 결과가 없습니다.</div>
+          )}
+        </TalkListContainer>
+      </TalkContainer>
+    </PageContainer>
+  );
+};
+
+export default Talktalk;*/
