@@ -3,10 +3,10 @@ import styled from "styled-components";
 import { useNavigate, useLocation  } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import axios from 'axios';
+import TalkPagination from './TalkPagination'
 
 const Talktalk = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [top100Active, setTop100Active] = useState(true);
@@ -18,27 +18,51 @@ const Talktalk = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [allPosts, setAllPosts] = useState([]);
   const [currentSearch, setCurrentSearch] = useState({ query: '', sort: 'top100' }); // 현재 검색 조건을 저장하는 상태
-
   const { isLoggedIn } = useAuth();
+  const location = useLocation();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [posts, setPosts] = useState([]);
+  const [currentSort, setCurrentSort] = useState('viewCounts'); // 기본값은 'viewCounts'로 설정
+
+  const fetchPosts = async (page) => {
+    let url = 'http://localhost:8080/talks';
+  
+    if (currentSort === 'viewCounts') {
+      url += '/view-counts';
+    } else if (currentSort === 'likes') {
+      url += '/like-counts';
+    } else if (currentSort === 'date') {
+      url += ''; // 날짜 정렬의 경우 기본 엔드포인트 사용
+    } else if (currentSort === 'comments'){
+      url += '/comment-counts';
+    }
+  
+    url += `?page=${page}`;
+  
+    try {
+      const response = await axios.get(url);
+      setPosts(response.data.content);
+      setTotalPages(response.data.totalPages);
+      setSearchResults(response.data.content);
+    } catch (error) {
+      console.error('Failed to fetch posts:', error);
+    }
+  };
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const response = await axios.get('http://localhost:8080/talks');
-        setAllPosts(response.data.content); // 'content' 키를 사용하여 데이터를 저장
-        setSearchResults(response.data.content);
-        handleTop100Click(response.data.content);  // 초기 검색 결과도 'content'를 사용하여 설정
-      } catch (error) {
-        console.error('데이터를 불러오는데 실패했습니다.', error);
-      }
-      
-    };
+    fetchPosts(currentPage);
+  }, [currentPage, currentSort]); // currentPage와 currentSort를 의존성 배열에 추가
   
-    fetchPosts();
-    
-  }, []);
+
   
- 
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage); // 현재 페이지 상태를 업데이트
+  };
+
+
+
   useEffect(() => {
     const filteredPosts = allPosts.filter(post => 
       post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -96,7 +120,7 @@ const handleGoPosting=()=>{
     setSearchTerm(tempSearchTerm);
   
     try {
-      const response = await axios.get(`http://localhost:8080/talks/search?query=${tempSearchTerm}`);
+      const response = await axios.get(`http://localhost:8080/talks/search?query=${tempSearchTerm}?page=1`);
       setSearchResults(response.data.content);
       setCurrentSearch({ ...currentSearch, query: tempSearchTerm }); // 검색 조건 업데이트
     } catch (error) {
@@ -105,76 +129,59 @@ const handleGoPosting=()=>{
   };
   
   const handleTop100Click = async () => {
+    setCurrentSort('viewCounts');
+
     setTop100Active(true);
     setAllPostsActive(false);
-    try {
-      const response = await axios.get('http://localhost:8080/talks/view-counts');
-      setSearchResults(response.data.content); // 가져온 데이터로 searchResults 상태 업데이트
-    } catch (error) {
-      console.error('조회 순으로 데이터를 불러오는 데 실패했습니다.', error);
-    }
+
+    setCurrentPage(1); // 첫 페이지로 리셋
   };
+  
   const handleAllPostsClick = async () => {
+    setCurrentSort('date');
+    setCurrentPage(1); // 첫 페이지로 리셋
+
     setTop100Active(false);
     setAllPostsActive(true);
-    try {
-      const response = await axios.get('http://localhost:8080/talks');
-      setSearchResults(response.data.content); // 가져온 데이터로 searchResults 상태 업데이트
-    } catch (error) {
-      console.error('최신순으로 데이터를 불러오는 데 실패했습니다.', error);
-    }
-  };
-
-  const handleSortByDate = async () => {
+    
     setDateSortActive(true);
     setLikesSortActive(false);
     setAnswersSortActive(false);
     try {
       const response = await axios.get('http://localhost:8080/talks');
       setSearchResults(response.data.content); // 가져온 데이터로 searchResults 상태 업데이트
+      
     } catch (error) {
       console.error('최신순으로 데이터를 불러오는 데 실패했습니다.', error);
     }
   };
 
-const handleSortByLikes = async () => {
-  setDateSortActive(false);
-  setLikesSortActive(true);
-  setAnswersSortActive(false);
+  const handleSortByDate = async () => {
+    setCurrentSort('date');
 
-  try {
-    const response = await axios.get('http://localhost:8080/talks/like-counts');
-    setSearchResults(response.data.content); // 가져온 데이터로 searchResults 상태 업데이트
-  } catch (error) {
-    console.error('좋아요 순으로 데이터를 불러오는 데 실패했습니다.', error);
-  }
-};
+    setDateSortActive(true);
+    setLikesSortActive(false);
+    setAnswersSortActive(false);
+
+    setCurrentPage(1); // 첫 페이지로 리셋
+  };
+
+  const handleSortByLikes = async () => {
+    setCurrentSort('likes');
+    setDateSortActive(false);
+    setLikesSortActive(true);
+    setAnswersSortActive(false);
+    setCurrentPage(1); // 첫 페이지로 리셋
+  };
 
 
 const handleSortByAnswers = async () => {
+    setCurrentSort('comments');
     setDateSortActive(false);
     setLikesSortActive(false);
     setAnswersSortActive(true);
-    try {
-      const response = await axios.get('http://localhost:8080/talks/comment-counts');
-      setSearchResults(response.data.content); // 가져온 데이터로 searchResults 상태 업데이트
-    } catch (error) {
-      console.error('답변 순으로 데이터를 불러오는 데 실패했습니다.', error);
-    }
+    setCurrentPage(1);
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 const WritingArea = () => {
   if (isLoggedIn) {
@@ -201,7 +208,7 @@ const WritingArea = () => {
 
 return(
   <PageContainer>
-     <WritingArea />
+     <WritingArea isLoggedIn={isLoggedIn} navigate={navigate} />
     <TalkButtonContainer>
     <ButtonsContainer>
       <Button onClick={handleTop100Click} active={top100Active}>조회수 Top 100</Button>
@@ -243,7 +250,7 @@ return(
       searchResults.map(item => (
           <SearchResultItem 
               key={item.id} 
-              onClick={() => navigate(`/post/${item.id}`)}>
+              onClick={() => navigate(`/talks/${item.id}`)}>
               <p className="title">{item.title}</p>
               <p className="content">{item.content || "내용이 없습니다."}</p>
               <p className="response">답변: {item.commentCount} | 댓글: {item.replyCount} | 조회수: {item.viewCount} | 좋아요: {item.likeCount}</p>
@@ -253,7 +260,11 @@ return(
       <div className="none-search">검색 결과가 없습니다.</div>
   )}
 </TalkListContainer>
-      </TalkContainer>
+<TalkPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+      /> </TalkContainer>
       </TalkButtonContainer>
   </PageContainer>
 );
