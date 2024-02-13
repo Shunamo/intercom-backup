@@ -1,63 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import styled from "styled-components";
-import axios from 'axios'; // axios 라이브러리를 사용하여 서버로부터 데이터를 받아옵니다.
-import fakeData from '../data/fakeData';
+import styled from 'styled-components';
+import axios from 'axios';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import ko from 'date-fns/locale/ko'; // npm install date-fns
+import ko from 'date-fns/locale/ko';
 import TalkComment from './TalkComment';
+
 const PostPage = () => {
     const { postId } = useParams();
     const [post, setPost] = useState(null);
     const [isMentor, setIsMentor] = useState(false); // 현직자 인증 여부
     const [isOwner, setIsOwner] = useState(false); // 작성자 본인 여부
+    const defaultProfileImg = '../assets/MyProfile.png';
 
     useEffect(() => {
-      // 서버에서 게시물 데이터를 받아오는 로직 (예시로 fakeData 사용)
-      const foundPost = fakeData.find(p => p.id.toString() === postId);
-      setPost(foundPost);
-
-      // 현직자 인증 여부와 작성자 본인 여부를 설정하는 로직
-      // 예시로 각각 true로 설정합니다. 실제로는 서버로부터 받은 데이터나 상태 관리 로직을 사용하여 설정해야 합니다.
-      setIsMentor(true);
-      setIsOwner(true);
-  }, [postId]);
-
-    if (!post) {
-      return <div>글을 찾을 수 없습니다.</div>;
-  }
-  
-  const timeAgo = formatDistanceToNow(parseISO(post.date), { addSuffix: true, locale: ko });
-  const handleEdit = () => {
-    // '수정하기' 버튼 클릭 시 수행할 로직을 여기에 추가하세요.
-    console.log("게시글 수정 페이지로 이동");
-};
-/*
-    useEffect(() => {
-        // 가정: 서버에서 게시물 데이터를 받아오는 URL이 'https://your-server.com/posts/{postId}' 형태라고 가정
         axios.get(`http://localhost:8080/talks/${postId}`)
             .then(response => {
-                const post = response.data;
-                setPost(post);
+                setPost(response.data);
             })
             .catch(error => {
-                console.error('게시물을 불러오는 중 오류가 발생했습니다', error);
+                console.error('Error fetching post:', error);
             });
     }, [postId]);
 
     if (!post) {
-        return <div>글을 찾을 수 없습니다.</div>;
+        return <div>Loading post...</div>;
     }
-    // 작성된 시각 표시 로직 (여기서는 단순히 예시로 현재 시간을 사용합니다.)
-    const displayTime = new Date().toLocaleTimeString("ko-KR");
-    */
+    const handleEdit = () => {
+      // '수정하기' 버튼 클릭 시 수행할 로직을 여기에 추가하세요.
+      console.log("게시글 수정 페이지로 이동");
+  };
+  const categories = post.category.split(',');
 
-    
+  // 분리된 카테고리를 map 함수로 순회하며 렌더링
+  const renderedCategories = categories.map((category, index) => (
+      <Category key={index}>{category.trim()}</Category>
+  ));
+    const timeAgo = post.createdAt ? formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true, locale: ko }) : '시간 정보 없음';
 
     return (
-      <PageContainer>
-          <PostContainer>
-          <TitleWrapper>
+        <PageContainer>
+            <PostContainer>
+                <TitleWrapper>
                     <Title>{post.title}</Title>
                     {isMentor && <MentorLabel>멘토</MentorLabel>}
                   
@@ -65,23 +49,21 @@ const PostPage = () => {
                     <EditImage src="../assets/Group73.png" alt="Profile"/>
               </EditButton>}
                 </TitleWrapper>
-               <Content>{post.content}</Content>
-               <PostingInfoConatiner>
-               <ProfileImage src="../assets/MyProfile.png" alt="Profile"/>
-               {/*<ProfileImage src={post.userProfileImageUrl} alt="Profile"/>*/}
-                  <User>{post.username}</User>
-                  <WrittenTime>{timeAgo}</WrittenTime>
-               </PostingInfoConatiner>
-               <Categories>
-                    {post.category.map((category, index) => (
-                        <Category key={index}>{category}</Category>
-                    ))}
+                <Content>{post.content}</Content>
+                <PostingInfoContainer>
+                <ProfileImage src={post.imageUrls && post.imageUrls.length > 0 ? post.imageUrls[0] : defaultProfileImg} alt="Profile" />
+                    <User>{post.writer}</User>
+                    <WrittenTime>{timeAgo}</WrittenTime>
+                </PostingInfoContainer>
+                <Categories>
+                {renderedCategories}
                 </Categories>
-          </PostContainer>
-          <TalkComment/>
-      </PageContainer>
-  );
+                            </PostContainer>
+            <TalkComment />
+        </PageContainer>
+    );
 };
+
 export default PostPage;
 
 const Categories = styled.div`
@@ -120,21 +102,21 @@ const MentorLabel = styled.span`
 `;
 
 const Category = styled.span`
-margin-top: 10px;
-display: flex;
-width: 125px;
-height: 40px;
-    background-color: white;
-    border-radius: 5px;
-    margin-right: 16px;
-    font-size: 16px;
-    font-weight: 700;
-    color: #5B00EF;
-    border: 2px solid #5B00EF;
-    align-items: center;
-    justify-content: center;
+  display: inline-flex;
+  min-width: 80px; /* 최소 너비 설정 */
+  height: 40px;
+  background-color: white;
+  border-radius: 5px;
+  padding: 0 10px; /* 좌우 패딩 추가 */
+  font-size: 16px;
+  font-weight: 700;
+  color: #5B00EF;
+  border: 2px solid #5B00EF;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px; /* 항목 사이 간격 */
+  margin-top: 10px;
 `;
-
 
 
 const EditButton = styled.button`
@@ -151,7 +133,7 @@ const EditButton = styled.button`
   align-items: center; // 버튼 내의 요소들을 세로 중앙에 배치합니다.
   justify-content: center; // 버튼 내의 요소들을 가로 중앙에 배치합니다.
 `;
-const PostingInfoConatiner=styled.div`
+const PostingInfoContainer=styled.div`
 display: flex;
   align-items: center;
   margin-top: 10px;
@@ -173,6 +155,8 @@ color: #636363;
 const ProfileImage=styled.img`
 width: 40px;
 height: 40px;
+border-radius: 50%;
+object-fit: cover;
 margin-right: 11px;
 `;
 
