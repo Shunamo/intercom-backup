@@ -20,27 +20,33 @@ const Talktalk = () => {
   const [currentSearch, setCurrentSearch] = useState({ query: '', sort: 'top100' }); // 현재 검색 조건을 저장하는 상태
   const { isLoggedIn } = useAuth();
   const location = useLocation();
-
+//페이징
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [posts, setPosts] = useState([]);
   const [currentSort, setCurrentSort] = useState('viewCounts'); // 기본값은 'viewCounts'로 설정
 
+  const [isSearchMode, setIsSearchMode] = useState(false); // 검색 모드 상태
+
+
   const fetchPosts = async (page) => {
     let url = 'http://localhost:8080/talks';
-  
-    if (currentSort === 'viewCounts') {
-      url += '/view-counts';
-    } else if (currentSort === 'likes') {
-      url += '/like-counts';
-    } else if (currentSort === 'date') {
-      url += ''; // 날짜 정렬의 경우 기본 엔드포인트 사용
-    } else if (currentSort === 'comments'){
-      url += '/comment-counts';
+
+    // 검색 모드일 경우
+    if (isSearchMode) {
+      url = `http://localhost:8080/talks/search?title=${searchTerm}&page=${page}`;
+    } else {
+      if (top100Active) {
+        url += '/view-counts';
+      } else if (likesSortActive) {
+        url += '/like-counts';
+      } else if (answersSortActive) {
+        url += '/comment-counts';
+      }
+
+      url += `?page=${page}`;
     }
-  
-    url += `?page=${page}`;
-  
+
     try {
       const response = await axios.get(url);
       setPosts(response.data.content);
@@ -50,11 +56,10 @@ const Talktalk = () => {
       console.error('Failed to fetch posts:', error);
     }
   };
-
   useEffect(() => {
     fetchPosts(currentPage);
-  }, [currentPage, currentSort]); // currentPage와 currentSort를 의존성 배열에 추가
-  
+  }, [currentPage, top100Active, likesSortActive, answersSortActive, isSearchMode, searchTerm]);
+
 
   
   const handlePageChange = (newPage) => {
@@ -63,25 +68,6 @@ const Talktalk = () => {
 
 
 
-  useEffect(() => {
-    const filteredPosts = allPosts.filter(post => 
-      post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      post.content.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    const sortedPosts = filteredPosts.sort((a, b) => {
-      const titleA = a.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const titleB = b.title.toLowerCase().includes(searchTerm.toLowerCase());
-      if (titleA && !titleB) {
-          return -1;
-      } else if (!titleA && titleB) {
-          return 1;
-      } else {
-          return 0;
-      }
-  });
-  setSearchResults(sortedPosts);
-}, [searchTerm]);
 
 useEffect(() => {
   if (isLoggedIn) {
@@ -114,74 +100,80 @@ const handleGoPosting=()=>{
     navigate('/search');
   };
 
-  
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setSearchTerm(tempSearchTerm);
+    
+    // 빈칸 검색 시 검색 모드 종료 및 상태 초기화
+    if (!tempSearchTerm.trim()) {
+      resetSearch();
+      return;
+    }
   
+    // 검색어 상태 업데이트 및 검색 모드 활성화
+    setSearchTerm(tempSearchTerm);
+    setIsSearchMode(true);
+    setCurrentPage(1); // 검색 결과를 첫 페이지로 설정
+    setDateSortActive(true); // 전체 글 보기에서는 기본적으로 날짜순으로 정렬
+    setLikesSortActive(false);
+    setAnswersSortActive(false);
+    // 검색 실행
     try {
-      const response = await axios.get(`http://localhost:8080/talks/search?query=${tempSearchTerm}?page=1`);
-      setSearchResults(response.data.content);
-      setCurrentSearch({ ...currentSearch, query: tempSearchTerm }); // 검색 조건 업데이트
+      const response = await axios.get(`http://localhost:8080/talks/search?title=${tempSearchTerm}&page=1`);
+      setSearchResults(response.data.content); // 검색 결과 업데이트
     } catch (error) {
       console.error('검색 요청 중 오류가 발생했습니다:', error);
     }
+    
   };
   
-  const handleTop100Click = async () => {
-    setCurrentSort('viewCounts');
+  const resetSearch = () => {
+    setSearchTerm('');
+    setIsSearchMode(false);
+    setCurrentPage(1);
+  };
 
+  const handleTop100Click = () => {
+    resetSearch();
     setTop100Active(true);
     setAllPostsActive(false);
-
-    setCurrentPage(1); // 첫 페이지로 리셋
-  };
-  
-  const handleAllPostsClick = async () => {
-    setCurrentSort('date');
-    setCurrentPage(1); // 첫 페이지로 리셋
-
-    setTop100Active(false);
-    setAllPostsActive(true);
-    
-    setDateSortActive(true);
+    setDateSortActive(false);
     setLikesSortActive(false);
     setAnswersSortActive(false);
-    try {
-      const response = await axios.get('http://localhost:8080/talks');
-      setSearchResults(response.data.content); // 가져온 데이터로 searchResults 상태 업데이트
-      
-    } catch (error) {
-      console.error('최신순으로 데이터를 불러오는 데 실패했습니다.', error);
+  };
+
+  const handleAllPostsClick = () => {
+    resetSearch();
+    setTop100Active(false);
+    setAllPostsActive(true);
+    setDateSortActive(true); // 전체 글 보기에서는 기본적으로 날짜순으로 정렬
+    setLikesSortActive(false);
+    setAnswersSortActive(false);
+  };
+
+
+  const handleSortByDate = () => {
+    if (isSearchMode) {
+      // 검색 모드에서 정렬 변경 시
+      setDateSortActive(true);
+      setLikesSortActive(false);
+      setAnswersSortActive(false);
+    } else {
+      // 일반 모드에서 정렬 변경 시
+      handleAllPostsClick();
     }
   };
 
-  const handleSortByDate = async () => {
-    setCurrentSort('date');
-
-    setDateSortActive(true);
-    setLikesSortActive(false);
-    setAnswersSortActive(false);
-
-    setCurrentPage(1); // 첫 페이지로 리셋
-  };
-
-  const handleSortByLikes = async () => {
-    setCurrentSort('likes');
+  const handleSortByLikes = () => {
     setDateSortActive(false);
     setLikesSortActive(true);
     setAnswersSortActive(false);
-    setCurrentPage(1); // 첫 페이지로 리셋
   };
 
-
-const handleSortByAnswers = async () => {
-    setCurrentSort('comments');
+  const handleSortByAnswers = () => {
     setDateSortActive(false);
     setLikesSortActive(false);
     setAnswersSortActive(true);
-    setCurrentPage(1);
-};
+  };
 
 const WritingArea = () => {
   if (isLoggedIn) {
