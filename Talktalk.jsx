@@ -24,9 +24,9 @@ const Talktalk = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [posts, setPosts] = useState([]);
-  const [currentSort, setCurrentSort] = useState('viewCounts'); // 기본값은 'viewCounts'로 설정
-
+  const [isRequesting, setIsRequesting] = useState(false); // 요청 중인지 여부를 추적하는 상태 변수 추가
   const [isSearchMode, setIsSearchMode] = useState(false); // 검색 모드 상태
+  const [selectedPostId, setSelectedPostId] = useState(null); // 선택된 게시물 ID를 저장하는 상태 변수
 
 
   const fetchPosts = async (page) => {
@@ -58,7 +58,7 @@ const Talktalk = () => {
   };
   useEffect(() => {
     fetchPosts(currentPage);
-  }, [currentPage, top100Active, likesSortActive, answersSortActive, isSearchMode, searchTerm]);
+  }, [currentPage, top100Active, likesSortActive, answersSortActive, searchTerm]);
 
 
   
@@ -66,13 +66,19 @@ const Talktalk = () => {
     setCurrentPage(newPage); // 현재 페이지 상태를 업데이트
   };
 
-
+  
 
 
 useEffect(() => {
   if (isLoggedIn) {
-      
-     setUserProfile({ imageUrl: '사용자_프로필_이미지_URL'});
+    const profile = localStorage.getItem('userProfile');
+
+    if (profile === "null") {
+      setUserProfile("./assets/Ellipse2.png");
+    }
+    else {
+      setUserProfile(profile);
+    }
   }
 }, [isLoggedIn]);
 
@@ -86,6 +92,21 @@ useEffect(() => {
   }
 }, [searchTerm, top100Active, allPosts]);
 
+
+useEffect(() => {
+  // 페이지 이동이 완료되면 요청 상태를 초기화
+  return () => {
+    setIsRequesting(false);
+  };
+}, [selectedPostId]); // selectedPostId가 변경될 때마다 실행
+
+const handlePostClick = async (postId) => {
+  if (isRequesting || selectedPostId === postId) return;
+  setIsRequesting(true);
+  setSelectedPostId(postId);
+  navigate(`/talks/${postId}`);
+  setIsRequesting(false);
+};
 
 
 const handleGoPosting=()=>{
@@ -179,7 +200,7 @@ const WritingArea = () => {
   if (isLoggedIn) {
     return (
       <WritingContainer onClick={handleGoPosting}>
-        <img src="./assets/TalkTalkUserProfile.png" alt="Profile Icon" style={{ marginRight: '1.5rem' }} />
+      <img src={userProfile} alt="Profile Icon" style={{ marginRight: '1.5rem', width: '78px', height: '78px', borderRadius: '100%', border: '3px solid #E2E2E2' }} />
         <WritingBox>
           질문을 남겨 보세요.
         </WritingBox>
@@ -188,7 +209,7 @@ const WritingArea = () => {
   } else {
     return (
       <WritingContainer onClick={handleGoLogin}>
-                  <img src="./assets/Ellipse2.png" alt="Profile Icon" style={{ marginRight: '1.5rem' }} />
+                  <img src="./assets/MyProfile.png" alt="Profile Icon" style={{ marginRight: '1.5rem', width: '78px', height: '78px' }} />
         <WritingBox>
           로그인하고 글을 남겨보세요.
         </WritingBox>
@@ -239,24 +260,31 @@ return(
 
 <TalkListContainer>
   {searchResults.length > 0 ? (
-      searchResults.map(item => (
-          <SearchResultItem 
-              key={item.id} 
-              onClick={() => navigate(`/talks/${item.id}`)}>
-              <p className="title">{item.title}</p>
-              <p className="content">{item.content || "내용이 없습니다."}</p>
-              <p className="response">답변: {item.commentCount} | 댓글: {item.replyCount} | 조회수: {item.viewCount} | 좋아요: {item.likeCount}</p>
-          </SearchResultItem>
-      ))
+    searchResults.map((item) => (
+      <SearchResultItem key={item.id} onClick={() => handlePostClick(item.id)}>
+        <TitleWrapper>
+          <p className="title">{item.title}</p>
+          {item.mentorField && <span className="mentorMark">멘토</span>}
+        </TitleWrapper>
+        <p className="content">
+          {(item.content && item.content.replace(/<img[^>]*>/g, "").replace(/<[^>]*>?/gm, "")) || "내용이 없습니다."}
+        </p>
+        <div className="details">
+          답변: {item.commentCount} | 댓글: {item.replyCount} | 조회수: {Math.floor(item.viewCount / 2)} | 좋아요: {item.likeCount}
+        </div>
+      </SearchResultItem>
+    ))
   ) : (
-      <div className="none-search">검색 결과가 없습니다.</div>
+    <div className="none-search">검색 결과가 없습니다.</div>
   )}
 </TalkListContainer>
-<TalkPagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
-      /> </TalkContainer>
+<div style={{ marginBottom: '2rem' }}>
+  <TalkPagination
+    currentPage={currentPage}
+    totalPages={totalPages}
+    onPageChange={handlePageChange}
+  />
+</div> </TalkContainer>
       </TalkButtonContainer>
   </PageContainer>
 );
@@ -264,7 +292,12 @@ return(
 
 export default Talktalk;
 
-
+const TitleWrapper = styled.div`
+margin-top: -10px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px; // 제목과 내용 사이의 간격 조정
+`;
 const PageContainer = styled.div`
 align-items: center;
 background-color: #EFF0F4;
@@ -333,34 +366,69 @@ width: 20rem;
 `;
 
 const SearchResultItem = styled.div`
-border-bottom: 1px solid #ddd;
-height: 9.6875rem;
-margin-left: 4.88rem;
-width: 65.25rem;
-
-.title {
-  color: #000;
-  font-size: 1.5625rem;
-  font-weight: 800;
-  margin-bottom: 0.56rem;
+  border-bottom: 1px solid #ddd;
+  padding: 1rem;
+  max-height: 9.6875rem; 
+  margin-left: 4.88rem;
+  width: 62.25rem;
+  overflow: hidden;
+  
+  .title {
+    color: #000;
+    font-size: 1.5625rem;
+    font-weight: 800;
+    margin-bottom: 0.56rem;
+    white-space: nowrap; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+.details{
+  margin-bottom: 10px;
 }
+  .content {
+    color: #A1A1A1;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-right: 20px;
+    display: -webkit-box; 
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+  }
 
-.content {
-  color: #A1A1A1;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
+  .response {
+    color: #636363;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    margin-top: 0.5rem;
+  }
 
-.response {
-  color: #636363;
-  font-size: 1.0625rem;
-  font-weight: 700;
-}
+  .mentorMark {
+    margin-top: 15px;
+    margin-left: 10px; // 제목과 멘토 마크 사이의 간격
+    display: flex;
+    background-color: #9FAEFF;
+    color: #FFFFFF;
+    border-radius:10px;
+    font-weight: bold;
+    width: 65px;
+    height: 28px;
+    font-size: 15px;
+    align-items: center;
+    justify-content: center;
+  }
+
+
+
+
+
 `;
 
 const TalkListContainer = styled.div`
-margin-top: 3.56rem;
+margin-top: 3.5rem;
 cursor: pointer;
+margin-bottom: 2rem;
 .none-search{
   display: flex;
   justify-content: center;
