@@ -1,495 +1,193 @@
-import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import axios from 'axios';
-import ko from 'date-fns/locale/ko';
-import { formatDistanceToNow, parseISO } from 'date-fns';
-import ActionButtons from './ActionButtons'; 
-import Adopt from './Adopt';
+// CurrentEmployCheckingModal.jsx
 
+import React, { useState } from "react";
+import styled from "styled-components";
+import { useNavigate } from 'react-router-dom';
+import axios from "axios";
+import ActionButtons from "./ActionButtons";
+import RepliedModal from "./RepliedModal"; // RepliedModal 컴포넌트를 불러옵니다.
 
-const RepliesContainer = styled.div`
-  margin-top: 20px;
-  margin-left: -80px;
+const ReplyInput = styled.textarea`
+margin: 20px auto;
+  width: 613px;
+  height: 269px;
+  margin-bottom: 43px;
+  padding: 28px;
+  font-size: 18px;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  font-family: SUITE;
+  resize: none;
+  outline: none;
+  &:focus {
+    border: 1px solid #ccc;
+  }
 `;
+const ModalWrapper = styled.div`
 
-const ReplyContainer = styled.div`
-background: #FFF;
-border-top: 2px solid #E2E2E2;
-display: flex;
-flex-direction: column;
-width: 69rem;
-padding: 3rem 5rem; 
-`;
-
-const ReplyHeader = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
+  justify-content: center;
   align-items: center;
+  z-index: 9999;
 `;
 
-const ReplyProfileImage = styled.img`
-  width: 63.75px;
-  height: 63.75px;
-  border-radius: 50%;
-  margin-right: 10px;
-`;
+const ModalContent = styled.div`
 
-const ReplyUserInfo = styled.div`
+position: relative; 
+background-color: #fff;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+  width: 834px;
+  height: 581px;
   display: flex;
   flex-direction: column;
-`;
-
-const ReplyUserName = styled.span`
-  font-weight: 900;
-  font-size: 25px;
-  font-family: SUITE;
-  margin-bottom: 2px;
-  margin-left: 17px;
-
-`;
-
-const ReplyMentorField = styled.span`
-  font-size: 20px;
-  color: #000000;
-  font-weight: 700;
-  margin-left: 17px;
-
-`;
-
-const ReplyContent = styled.div`
-  margin-top: 30px;
-  font-size: 25px;
-  font-weight: 600;
-
-  color: #636363;
-`;
-
-const ReplyFooter = styled.div`
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: 10px;
-`;
-
-const ReplyDate = styled.span`
-  font-size: 17px;
-  font-weight: 700;
-  color: #636363;
 `;
 
 
-
-const ProfileAdoptWrapper = styled.div`
-display: flex;
-justify-content: space-between;
-align-items: center; 
-width: 100%; 
-margin-top: 10px;
-`;
-const TopBar = styled.div`
-  height: 10px; 
-  background-color: #5B00EF; 
-  width: 1044px; 
-`;
-const AdoptedTag = styled.div`
-  justify-content: flex-end;
-  background: none;
-  color: #5B00EF;
-  font-size: 20;
-  font-weight: 800;
-  margin-right: 60px;
-  margin-top: 10px;
-  margin-left: auto;
+const ModalHeader = styled.div`
+  align-items: center;
 
 `;
 
-
-const fetchCurrentUser = async (accessToken) => {
-  try {
-    const response = await axios.get('http://localhost:8080/users/current-user', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching current user:', error);
-    return null;
+const CloseButton = styled.button`
+  width: 200px;
+  height: 64px;
+  background-color: #A1A1A1;
+  color: white;
+  font-size: 20px;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: SUITE;
+  &:hover {
+    background-color: #848484;
   }
-};
+  &:active {
+    background-color: #6a6a6a;
+  }
+`;
+const CloseIcon = styled.div`
+  position: absolute;
+  top: 20px;
+  left: 31px;
+ 
+  cursor: pointer;
+  font-size: 40px;
+  color: #666;
+  &:hover {
+    color: #333;
+  }
+`;
+
+const ButtonWrapper = styled.div`
+  display: flex;
+  justify-content: center; // 버튼을 중앙에 배치합니다.
+  align-items: center;
+`;
 
 
 
-const ReplyList = ({ talkId, postWriter  , adoptedReplyId, onAdoptReply}) => {
-    const defaultProfileImg = '../assets/MyProfile.png';
-    const [replies, setReplies] = useState([]);
-    const [currentUser, setCurrentUser] = useState(null);
 
-    const [liked, setLiked] = useState(false); 
-    const [showReplies, setShowReplies] = useState(false);
-    const [showRepliesFor, setShowRepliesFor] = useState({});
-    const accessToken = localStorage.getItem('accessToken'); // 로컬 스토리지에서 토큰 가져오기
+const NextButton = styled.button`
+  background-color: #5B00EF;
+  width: 200px;
+  height: 64px;
+  color: white;
+  font-size: 20px;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: SUITE;
+  &:hover {
+    background-color: #3e0089;
+  }
+  &:active {
+    background-color: #2d0066;
+  }
+`;
+const Note = styled.div`
+  font-size: 30px;
+  color: black;
 
-    const [adoptedCommentId, setAdoptedCommentId] = useState(null);
-    const [nestedReplies, setNestedReplies] = useState([]);
-    const [isAdopted, setIsAdopted] = useState(false);
+  margin-top: 70px;
+  font-family:SUITE;
+  font-weight: 700;
+`;
 
-    const addReplyToList = (newReply) => {
-      setReplies((prevReplies) => [...prevReplies, newReply]);
-    };
 
-    useEffect(() => {
-      const checkAdoptionStatus = async () => {
-          try {
-              const response = await axios.get(`http://localhost:8080/comments/check-adopt/${talkId}`);
-              setIsAdopted(response.data);
-          } catch (error) {
-              console.error('Error checking adoption status:', error);
-          }
-      };
 
-      if (talkId) {
-          checkAdoptionStatus();
-      }
-  }, [talkId, adoptedCommentId]);
 
-  const handleAdopt = async (commentId) => {
-    try {
-      await axios.post(`http://localhost:8080/comments/${commentId}/adopt`, {}, {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-      });
-      setAdoptedCommentId(commentId); // 채택된 댓글 ID 업데이트
-      // 채택 성공에 대한 추가 처리 (예: 알림 표시)
-    } catch (error) {
-      console.error("Error adopting comment:", error);
-    }
-    onAdoptReply(commentId);
+const ReplyModal = ({ isOpen, onClose, postId }) => {
+  const [reply, setReply] = useState("");
+  const [isRepliedModalOpen, setIsRepliedModalOpen] = useState(false); // RepliedModal 표시 여부 상태
+  const accessToken = localStorage.getItem('accessToken'); // 로컬 스토리지에서 토큰 가져오기
+
+  const handleReplyChange = (e) => {
+    setReply(e.target.value);
   };
 
-
-    const NestedReplyInput = ({ parentId, onReplySubmit }) => {
-      const [replyContent, setReplyContent] = useState('');
-
-      const handleSubmit = async (e) => {
-        e.preventDefault();
-       
-        onReplySubmit(parentId, replyContent);
-        setReplyContent(''); 
-      };
-    
-      return (
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            value={replyContent}
-            onChange={(e) => setReplyContent(e.target.value)}
-            placeholder="댓글을 입력하세요"
-            style={{
-              paddingLeft: '30px',
-              fontFamily: 'SUITE',
-              fontSize: '17px',
-              fontWeight: '700',
-              width: '800px', // 입력창의 너비 설정
-              marginLeft: '70px',
-              border: 'none', // 테두리 색상 설정
-              height: '44px',
-              outline: 'none', // 포커스 시 테두리 스타일 제거
-              marginTop: '62px'
-            }}
-          />
-          <button
-            type="submit"
-            disabled={!replyContent.trim()} // 입력창이 비어있으면 버튼 비활성화
-            style={{
-              marginTop: '62px',
-              fontSize: '17px',
-              fontWeight: '700',
-              fontFamily: 'SUITE',
-              width: '148px',
-              height: '46px',
-              border: 'none',
-              backgroundColor: replyContent.trim() ? '#5B00EF' : '#ccc', // 입력 내용에 따라 배경색 변경
-              color: 'white',
-              cursor: replyContent.trim() ? 'pointer' : 'default', // 입력 내용에 따라 커서 변경
-            }}
-          >
-            등록 하기
-          </button>
-        </form>
-      );
-    };
-    
-
-
-
-
-    const handleNestedReplySubmit = async ( parentId, content) => {
-      try {
-        const response = await axios.post('http://localhost:8080/comments/reply', {
-          talkId:talkId,
-          parentId,
-          content
-        }, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`, 
-            'Content-Type': 'application/json'
-          }
-        });
-    
-        if (response.status === 200) {
-          const newNestedReply = response.data;
-         setNestedReplies([...nestedReplies, newNestedReply]);
+  const submitReply = async () => {
+    try {
+      const response = await axios.post(`http://localhost:8080/comments`, {
+        talkId: postId,
+        content: reply
+      }, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         }
-      } catch (error) {
-        console.error('Error submitting nested reply:', error);
-        // 에러 처리 로직 구현
+      });
+
+      if (response.status === 200) {
+        console.log("답변 제출 성공:", response.data);
+        setIsRepliedModalOpen(true); // RepliedModal을 표시하도록 상태 업데이트
+      
       }
-    };
+    } catch (error) {
+      console.error("답변 제출 실패:", error);
+    }
     
+  };
 
-    const fetchReplies = async () => {
-            try {
-                const response = await axios.get(`http://localhost:8080/comments/talk/${talkId}`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` },
-                });    
-                const comments = response.data.filter(reply => !reply.parentId || reply.parentId === null);
-                const nestedReplies = response.data.filter(reply => reply.parentId);
-                console.log(comments)
-                console.log(nestedReplies)
-                // 서버 응답에서 userLiked 속성을 사용하여 각 댓글의 좋아요 상태를 설정합니다.
-                const repliesWithLikeStatus = comments.map(reply => ({
-                    ...reply,
-                    liked: reply.userLiked,
-                    likeCount: reply.likeCount || 0,
-                    defaultProfile: reply.defaultProfile,
-                }));
-                setReplies(repliesWithLikeStatus);
-                setNestedReplies(nestedReplies);
-
-            } catch (error) {
-                console.error("Error fetching replies:", error);
-            }
-        };
-
-
-        useEffect(() => {
-          const getCurrentUser = async () => {
-            const user = await fetchCurrentUser(accessToken);
-            setCurrentUser(user);
-          };
-      
-          if (accessToken) {
-            getCurrentUser();
-          }
-        }, [accessToken]);
-
-
-        useEffect(() => {
-          const fetchReplies = async () => {
-            try {
-              const response = await axios.get(`http://localhost:8080/comments/talk/${talkId}`, {
-                headers: { 'Authorization': `Bearer ${accessToken}` },
-              });
-              // 채택된 답변을 상단에 배치하는 정렬 로직
-              const sortedReplies = response.data.sort((a, b) => b.adoptionStatus === 'ADOPTED' ? -1 : a.id - b.id);
-              setReplies(sortedReplies);
-            } catch (error) {
-              console.error("Error fetching replies:", error);
-            }
-          };
-        
-          fetchReplies();
-        }, [talkId, accessToken, adoptedCommentId]); // adoptedCommentId가 변경될 때마다 댓글 목록을 새로고침합니다.
-        
-    const handleToggleLike = async (commentId) => {
-        // 댓글의 좋아요 상태를 토글하는 함수입니다.
-        const replyIndex = replies.findIndex(reply => reply.id === commentId);
-        if (replyIndex === -1) return;
-
-        const reply = replies[replyIndex];
-        const updatedReplies = [...replies];
-        const updatedReply = { ...reply, liked: !reply.liked };
-
-        try {
-            if (!reply.liked) {
-                await axios.post(`http://localhost:8080/likes/comments/${commentId}`, {}, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` },
-                });
-                updatedReply.likeCount += 1;
-                } else {
-                await axios.delete(`http://localhost:8080/likes/comments/${commentId}`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` },
-                });
-                updatedReply.likeCount -= 1;
-            }
-            updatedReplies[replyIndex] = updatedReply; 
-            setReplies(updatedReplies);
-        } catch (error) {
-            console.error("Error toggling like:", error);
-        }
-    };
-
-  
-      const toggleNestedRepliesVisibility = (commentId) => {
-        setShowRepliesFor(prev => ({ ...prev, [commentId]: !prev[commentId] }));
-    };
-
-      useEffect(() => {
-        fetchReplies().then(() => {
-          // 채택된 답변을 상단에 배치
-          setReplies(prevReplies => 
-            prevReplies.sort((a, b) => b.adoptionStatus === 'ADOPTED' ? 1 : -1)
-          );
-        });
-      }, [talkId, accessToken, adoptedCommentId]); // adoptedCommentId가 변경될 때마다 댓글 목록을 업데이트합니다.
-    
-     
-    return (
-        <RepliesContainer>
-            {replies.map(reply => (
-               <div key={reply.id}>
-                <ReplyContainer key={reply.id}>
-                   {reply.adoptionStatus === 'ADOPTED' && <TopBar />}
-                   {reply.adoptionStatus === 'ADOPTED' && (
-              <AdoptedTag>작성자 채택</AdoptedTag>)} 
-                  <ProfileAdoptWrapper>
-                    <ReplyHeader>
-                    
-                        <ReplyProfileImage src={reply.defaultProfile || defaultProfileImg} alt="Profile"style={{ border: '3px solid #E2E2E2' }} />
-                        <ReplyUserInfo>
-                            <ReplyUserName>{reply.writer}
-                            {reply.mentorField && <CheckIcon src="/assets/Group133.png" alt="Verified" />}
-                            </ReplyUserName> 
-                            {reply.mentorField && <ReplyMentorField>{reply.mentorField}</ReplyMentorField>}
-                        </ReplyUserInfo>
-                    </ReplyHeader>
-                   
-                    {currentUser && currentUser.nickname === postWriter && (
-               <Adopt commentId={reply.id} accessToken={accessToken} adoptionStatus={reply.adoptionStatus} onAdoptSuccess={() => handleAdopt(reply.id)}/>
-                        )}
-                  </ProfileAdoptWrapper>
-                    <ReplyContent>{reply.content}</ReplyContent>
-                    <ReplyFooter>
-                        <ReplyDate>{formatDistanceToNow(parseISO(reply.createdAt), { addSuffix: true, locale: ko })}</ReplyDate>
-                        <ActionButtons
-                         liked={reply.liked}
-                         likesCount={reply.likeCount}
-                         repliesCount={reply.replyCount}
-                          onToggleLike={() => handleToggleLike(reply.id)}
-                          handleCommentsClick={() => toggleNestedRepliesVisibility(reply.id)}
-                        />
-                    </ReplyFooter>
-
-
-                    {showRepliesFor[reply.id] && (
-  <NestedRepliesContainer>
-    <NestedRepliesWrapper>
-      {nestedReplies
-        .filter(nestedReply => nestedReply.parentId === reply.id)
-        .map(nestedReply => (
-          <NestedReplyContainer key={nestedReply.id}>
-            <NestedReplyUserInfo>
-              <NestedReplyProfileImage src={nestedReply.defaultProfile || defaultProfileImg} alt="Profile" />
-              <NestedReplyUserName>{nestedReply.writer}
-              {reply.mentorField && <CheckIcon2 src="/assets/Group133.png" alt="Verified" />}
-
-              </NestedReplyUserName>
-            </NestedReplyUserInfo>
-            <NestedReplyContent>{nestedReply.content}</NestedReplyContent>
-          </NestedReplyContainer>
-      ))}
-      
-      <NestedReplyInput
-      parentId={reply.id}
-      onReplySubmit={handleNestedReplySubmit}
-    />
-    </NestedRepliesWrapper>
-    
-  </NestedRepliesContainer>
-)}
-
-
-
-
-
-                </ReplyContainer>
-                
-        </div>
-                    ))}
-        </RepliesContainer>
-
-    );
+  return (
+    <>
+      {isOpen && !isRepliedModalOpen && (
+        <ModalWrapper>
+          <ModalContent>
+            <CloseIcon onClick={onClose}>&times;</CloseIcon>
+            <ModalHeader>
+              <Note>톡톡 답변 작성하기</Note>
+              <ReplyInput value={reply} onChange={handleReplyChange} placeholder="글을 입력해주세요" />
+            </ModalHeader>
+            <ButtonWrapper>
+              <NextButton onClick={submitReply}>등록하기</NextButton>
+            </ButtonWrapper>
+          </ModalContent>
+        </ModalWrapper>
+      )}
+      {isRepliedModalOpen && (
+        <RepliedModal
+          isOpen={isRepliedModalOpen}
+          onClose={() => {
+            setIsRepliedModalOpen(false);
+            onClose(); // 원래의 ReplyModal도 닫기
+          }}
+        />
+      )}
+    </>
+  );
 };
 
-export default ReplyList;
-const NestedRepliesContainer = styled.div`
-  background: #FFF;
-  display: flex;
-  flex-direction: column; 
-  align-items: center;
-  justify-content: center; 
-  padding: 37px; 
-  margin-top: 50px;
-`;
-
-const NestedRepliesWrapper=styled.div`
-background: #EFF0F4;
-width: 1120px;
-border-radius: 10px;
-padding-top: 42.75px;
-padding-bottom: 62px; 
-
-`;
-
-const NestedReplyContainer = styled.div`
-background: #EFF0F4;
-border-bottom: 2px solid #E2E2E2;
-display: flex;
-flex-direction: column;
-width: 984px;
-margin-left: 67px;
-
-`;
-const NestedReplyUserInfo = styled.div`
-  display: flex;
-  margin-top: 10px;
-  
-  justify-content: flex-start; /* 요소들을 왼쪽으로 정렬합니다 */
-`;
-const NestedReplyProfileImage = styled.img`
-width: 34.5px;
-height: 34.5px;
-border-radius: 50%;
-margin-top: 16px
-
-`;
-const NestedReplyUserName = styled.div`
-font-weight: 900;
-font-size: 20px;
-font-family: SUITE;
-margin-bottom: 2px;
-margin-left: 10.75px;
-margin-top: 19px
-`;
-const NestedReplyContent = styled.div`
-padding-bottom: 27px;
-margin-top: 19px;
-font-size: 20px;
-font-weight: 600;
-margin-left: 11px;
-color: rgba(99, 99, 99, 0.5);
-
-`;
-const CheckIcon = styled.img`
-  width: 20px;  // 로고 크기 조절
-  height: 20px; // 로고 크기 조절
-  margin-left: 7px; // 이름과의 간격 조절
-`;
-
-const CheckIcon2 = styled.img`
-  width: 15px;  // 로고 크기 조절
-  height: 15px; // 로고 크기 조절
-  margin-left: 5px; // 이름과의 간격 조절
-`;
-
-
-
+export default ReplyModal;
