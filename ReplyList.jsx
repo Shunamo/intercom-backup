@@ -4,25 +4,22 @@ import axios from 'axios';
 import ko from 'date-fns/locale/ko';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import ActionButtons from './ActionButtons'; 
-import RepliesToggle from './RepliesToggle'; // 올바른 경로로 수정하세요
-import { useAuth } from './AuthContext';
 import Adopt from './Adopt';
 
 
 const RepliesContainer = styled.div`
   margin-top: 20px;
+  margin-left: -80px;
 `;
 
 const ReplyContainer = styled.div`
 background: #FFF;
-border: 2px solid #E2E2E2;
-border-radius: 1.25rem;
+border-top: 2px solid #E2E2E2;
 display: flex;
 flex-direction: column;
 width: 69rem;
 padding: 3rem 5rem; 
 `;
-
 
 const ReplyHeader = styled.div`
   display: flex;
@@ -317,9 +314,7 @@ const ReplyList = ({ talkId, postWriter  , adoptedReplyId, onAdoptReply}) => {
         }
     };
 
-    const handleCommentsClick = () => {
-        setShowReplies(!showReplies);
-      };
+   
       const toggleNestedRepliesVisibility = (commentId) => {
         setShowRepliesFor(prev => ({ ...prev, [commentId]: !prev[commentId] }));
     };
@@ -362,6 +357,7 @@ const ReplyList = ({ talkId, postWriter  , adoptedReplyId, onAdoptReply}) => {
                         <ActionButtons
                          liked={reply.liked}
                          likesCount={reply.likeCount}
+                         repliesCount={reply.replyCount}
                           onToggleLike={() => handleToggleLike(reply.id)}
                           handleCommentsClick={() => toggleNestedRepliesVisibility(reply.id)}
                         />
