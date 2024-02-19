@@ -71,10 +71,10 @@ const Talktalk = () => {
 
 useEffect(() => {
   if (isLoggedIn) {
-    const profile = localStorage.getItem('userProfile');
+    const profile = localStorage.getItem('profileImageUrl');
 
     if (profile === "null") {
-      setUserProfile("./assets/Ellipse2.png");
+      setUserProfile("./assets/MyProfile.png");
     }
     else {
       setUserProfile(profile);
@@ -104,7 +104,11 @@ const handlePostClick = async (postId) => {
   if (isRequesting || selectedPostId === postId) return;
   setIsRequesting(true);
   setSelectedPostId(postId);
-  navigate(`/talks/${postId}`);
+  if (!isLoggedIn) {
+    navigate('/join', { state: { from: location } });
+  } else {
+    navigate(`/talks/${postId}`);
+  }
   setIsRequesting(false);
 };
 
@@ -229,7 +233,7 @@ return(
     </ButtonsContainer>
     <TalkContainer >
     <SearchInputContainer onSubmit={handleSubmit}>
-  <img src="./assets/SearchGray.png" alt="Search Icon" style={{ margin: '1.19rem 1.75rem 1.21rem 1.75rem' }} onClick={handleGoSearch}/>
+  <img src="/assets/SearchGray.png" alt="Search Icon" style={{ margin: '1.19rem 1.75rem 1.21rem 1.75rem' }} onClick={handleGoSearch}/>
   <SearchInput
       type="text"
       placeholder="원하는 글을 검색해 보세요."
@@ -270,7 +274,7 @@ return(
           {(item.content && item.content.replace(/<img[^>]*>/g, "").replace(/<[^>]*>?/gm, "")) || "내용이 없습니다."}
         </p>
         <div className="details">
-          답변: {item.commentCount} | 댓글: {item.replyCount} | 조회수: {Math.floor(item.viewCount / 2)} | 좋아요: {item.likeCount}
+          답변: {item.commentCount.toLocaleString()} | 댓글: {item.replyCount.toLocaleString()} | 조회수: {Math.floor(item.viewCount / 2).toLocaleString()} | 좋아요: {item.likeCount.toLocaleString()}
         </div>
       </SearchResultItem>
     ))
@@ -446,7 +450,6 @@ const ButtonsContainer = styled.div`
 display: flex;
 justify-content: center;
 margin-right: 52rem;
-margin-top: 4.56rem;
 width: 100%;
 
 `;
